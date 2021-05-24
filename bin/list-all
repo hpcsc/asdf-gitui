@@ -15,7 +15,8 @@ function query_releases() {
 }
 
 function grep_tag_names() {
-    grep tag_name | sed 's/[[:space:]]*\"tag_name\":[[:space:]]*\"\(.*\)\",/\1/'
+    # grep tag and remove `v` in front of version. `asdf latest` doesn't work well with versions not starting with a number
+    grep tag_name | sed 's/[[:space:]]*\"tag_name\":[[:space:]]*\"v\(.*\)\",/\1/'
 }
 
 # stolen from https://github.com/rbenv/ruby-build/pull/631/files#diff-fdcfb8a18714b33b07529b7d02b54f1dR942

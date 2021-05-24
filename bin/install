@@ -12,7 +12,8 @@ function get_os() {
 }
 
 function download() {
-    local version=$1
+    # append `v` to version number. `v` was stripped off when doing `asdf list-all` for compatibility with `asdf latest`
+    local version="v$1"
     local install_path=$2
     read -r os
 
