@@ -2,28 +2,64 @@
 
 set -eo pipefail
 
-function get_os() {
+get_os() {
     local os=$(uname -s)
     case "${os}" in
-        Linux*)     echo linux-musl;;
+        Linux*)     echo linux;;
         Darwin*)    echo mac;;
         *)          (>&2 echo "unsupported OS: ${os}" && exit 1)
     esac
 }
 
-function download() {
-    # append `v` to version number. `v` was stripped off when doing `asdf list-all` for compatibility with `asdf latest`
-    local version="v$1"
-    local install_path=$2
-    read -r os
+get_arch() {
+    local arch
+    arch=$(uname -m)
+    case "${arch}" in
+        aarch64*)   echo aarch64;;
+        arm64*)     echo arm;;
+        x86_64*)    echo x86_64;;
+        *)          (>&2 echo "unsupported CPU architecture: ${arch}" && exit 1)
+    esac
+}
+
+get_os_and_arch() {
+    local os
+    os=$(get_os)
+    local arch
+    arch=$(get_arch)
+
+    if [ "${os}" = "mac" ]; then
+        # MacOS gz file does not have arch in the name
+        echo "${os}"
+    else
+        echo "${os}-${arch}"
+    fi
+}
+
+get_download_url() {
+    local version="$1"
+    local os_and_arch
+    os_and_arch=$(get_os_and_arch)
+
+    curl -s "https://api.github.com/repos/extrawurst/gitui/releases/tags/${version}" | \
+        jq -r '.assets[] |
+                    select(.name | contains("gitui") and contains("'${os_and_arch}'")) |
+                    .browser_download_url'
+}
+
+download() {
+    local install_path="$1"
+
+    read -r url
 
     mkdir -p ${install_path}/bin
 
-    local url="https://github.com/extrawurst/gitui/releases/download/${version}/gitui-${os}.tar.gz"
     echo "Download from ${url} to ${install_path}"
     curl -L "${url}" | tar -C "${install_path}/bin" --strip-components=1 -xzf -
     chmod +x "${install_path}/bin/gitui"
 }
 
-get_os | \
-    download "${ASDF_INSTALL_VERSION}" "${ASDF_INSTALL_PATH}"
+# append `v` to version number. `v` was stripped off when doing `asdf list-all` for compatibility with `asdf latest`
+VERSION="v${ASDF_INSTALL_VERSION}"
+get_download_url "${VERSION}" | \
+    download "${ASDF_INSTALL_PATH}"
